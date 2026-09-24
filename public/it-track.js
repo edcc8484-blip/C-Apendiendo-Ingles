@@ -1,0 +1,305 @@
+// Ruta "Inglés para Redes e Infraestructura": 4 etapas (A1 → C2).
+// Mismo formato que LESSONS, más `terms` (término, IPA, pronunciación figurada, significado).
+// Las lecciones se desbloquean en orden: los ejercicios de cada una son el quiz del módulo.
+
+export const IT_STAGES = [
+  { stage: 1, name: "Nivel 1 · Fundamentos + redes básicas", cefr: "A1–A2" },
+  { stage: 2, name: "Nivel 2 · Soporte y troubleshooting", cefr: "B1–B2" },
+  { stage: 3, name: "Nivel 3 · Arquitectura, cloud y seguridad", cefr: "C1" },
+  { stage: 4, name: "Nivel 4 · Ejecutivo: incidentes mayores y proveedores", cefr: "C2" },
+];
+
+export const IT_LESSONS = [
+  // ---------- Nivel 1 (70% español) ----------
+  {
+    id: "it-1-devices", track: "it", stage: 1, level: "A1", title: "Componentes de red + el verbo «to be»",
+    intro: "Con un equipo usas «is» y con varios usas «are». «Up» = funcionando; «down» = caído. En una llamada responde siempre con la oración completa: «The router is down», no solo «down».",
+    terms: [
+      { en: "router", ipa: "/ˈraʊ.tɚ/", say: "RÁU-ter", es: "enrutador: conecta redes diferentes" },
+      { en: "switch", ipa: "/swɪtʃ/", say: "SUÍCH", es: "conmutador: conecta equipos de la misma red (LAN)" },
+      { en: "firewall", ipa: "/ˈfaɪɚ.wɔːl/", say: "FÁIER-uol", es: "cortafuegos: permite o bloquea tráfico" },
+      { en: "server", ipa: "/ˈsɝː.vɚ/", say: "SÉR-ver", es: "servidor: ofrece servicios (DNS, web, archivos)" },
+      { en: "up", ipa: "/ʌp/", say: "AP", es: "arriba / funcionando" },
+      { en: "down", ipa: "/daʊn/", say: "DÁUN", es: "caído / sin servicio" },
+    ],
+    phrases: [
+      { en: "The router is down.", es: "El router está caído." },
+      { en: "The switch is up.", es: "El switch está funcionando." },
+      { en: "The servers are online.", es: "Los servidores están en línea." },
+      { en: "The firewall blocks the traffic.", es: "El firewall bloquea el tráfico." },
+      { en: "Is the router up?", es: "¿El router está funcionando?" },
+      { en: "No, the router is down.", es: "No, el router está caído." },
+    ],
+    exercises: [
+      { type: "choice", q: "The servers ___ online.", options: ["is", "are", "am"], answer: 1 },
+      { type: "choice", q: "¿Qué equipo filtra (permite o bloquea) el tráfico?", options: ["Router", "Firewall", "Switch"], answer: 1 },
+      { type: "choice", q: "«The router is down» significa:", options: ["El router está caído", "El router está abajo del rack", "El router es nuevo"], answer: 0 },
+      { type: "order", es: "El switch está funcionando.", en: "The switch is up." },
+      { type: "speak", en: "The router is down." },
+    ],
+  },
+  {
+    id: "it-1-cabling", track: "it", stage: 1, level: "A1", title: "Cables, puertos y topología",
+    intro: "Vocabulario físico del data center. Con he/she/it el verbo «have» cambia a «has»: «The switch has forty-eight ports». Los números de puerto y piso se dicen como números normales: «port one», «the second floor».",
+    terms: [
+      { en: "cable", ipa: "/ˈkeɪ.bəl/", say: "KÉI-bol", es: "cable" },
+      { en: "port", ipa: "/pɔːrt/", say: "PORT", es: "puerto" },
+      { en: "fiber", ipa: "/ˈfaɪ.bɚ/", say: "FÁI-ber", es: "fibra óptica" },
+      { en: "access point", ipa: "/ˈæk.ses ˌpɔɪnt/", say: "ÁK-ses POINT", es: "punto de acceso inalámbrico" },
+      { en: "rack", ipa: "/ræk/", say: "RAK", es: "gabinete / rack" },
+      { en: "topology", ipa: "/təˈpɑː.lə.dʒi/", say: "to-PÓ-lo-chi", es: "topología" },
+      { en: "uplink", ipa: "/ˈʌp.lɪŋk/", say: "ÁP-link", es: "enlace hacia el equipo superior" },
+    ],
+    phrases: [
+      { en: "Connect the cable to port one.", es: "Conecta el cable al puerto uno." },
+      { en: "The fiber link is down.", es: "El enlace de fibra está caído." },
+      { en: "The switch has forty-eight ports.", es: "El switch tiene cuarenta y ocho puertos." },
+      { en: "The server is in rack three.", es: "El servidor está en el rack tres." },
+      { en: "The access point is on the second floor.", es: "El access point está en el segundo piso." },
+      { en: "The uplink goes to the core switch.", es: "El uplink va al switch core." },
+    ],
+    exercises: [
+      { type: "choice", q: "The switch ___ forty-eight ports.", options: ["have", "has", "is"], answer: 1 },
+      { type: "choice", q: "Un «rack» es:", options: ["Un gabinete donde se montan equipos", "Un tipo de cable", "Un protocolo de red"], answer: 0 },
+      { type: "order", es: "Conecta el cable al puerto uno.", en: "Connect the cable to port one." },
+      { type: "speak", en: "The fiber link is down." },
+    ],
+  },
+  {
+    id: "it-1-commands", track: "it", stage: 1, level: "A2", title: "Verbos de acción y comandos",
+    intro: "Para dar instrucciones se usa el imperativo: el verbo va al inicio y sin sujeto. «Check the cable». Para prohibir: «Don't» + verbo. Los comandos de CLI se leen tal cual: «show ip interface brief».",
+    terms: [
+      { en: "check", ipa: "/tʃek/", say: "CHEK", es: "revisar / verificar" },
+      { en: "restart", ipa: "/ˌriːˈstɑːrt/", say: "ri-STÁRT", es: "reiniciar (un servicio o equipo)" },
+      { en: "reboot", ipa: "/ˌriːˈbuːt/", say: "ri-BÚT", es: "reiniciar (el equipo completo)" },
+      { en: "configure", ipa: "/kənˈfɪɡ.jɚ/", say: "con-FÍ-guiur", es: "configurar" },
+      { en: "ping", ipa: "/pɪŋ/", say: "PING", es: "probar conectividad con ICMP" },
+      { en: "gateway", ipa: "/ˈɡeɪt.weɪ/", say: "GUÉIT-uei", es: "puerta de enlace" },
+      { en: "VLAN", ipa: "/ˈviː.læn/", say: "VÍ-lan", es: "red LAN virtual" },
+    ],
+    phrases: [
+      { en: "Check the cable, please.", es: "Revisa el cable, por favor." },
+      { en: "Restart the service.", es: "Reinicia el servicio." },
+      { en: "Ping the default gateway.", es: "Haz ping al gateway por defecto." },
+      { en: "Run the command show ip interface brief.", es: "Ejecuta el comando show ip interface brief." },
+      { en: "Configure the VLAN on the access switch.", es: "Configura la VLAN en el switch de acceso." },
+      { en: "Don't reboot the core switch now.", es: "No reinicies el switch core ahora." },
+    ],
+    exercises: [
+      { type: "choice", q: "Quieres probar conectividad con el gateway:", options: ["Ping the gateway.", "Pinging the gateway is.", "The gateway ping."], answer: 0 },
+      { type: "choice", q: "Negativo de «Reboot the server»:", options: ["No reboot the server.", "Don't reboot the server.", "Not reboot the server."], answer: 1 },
+      { type: "order", es: "Revisa el cable, por favor.", en: "Check the cable, please." },
+      { type: "speak", en: "Ping the default gateway." },
+    ],
+  },
+  {
+    id: "it-1-ip", track: "it", stage: 1, level: "A2", title: "Direcciones IP y números",
+    intro: "Una IP se dice por octetos, con «dot» entre ellos: 10.0.0.1 = «ten dot zero dot zero dot one». En redes 192.168… es común leer dígito por dígito: «one nine two dot one six eight». El prefijo /24 se dice «slash twenty-four».",
+    terms: [
+      { en: "IP address", ipa: "/ˌaɪˈpiː ˈæd.res/", say: "ai-PÍ Á-dres", es: "dirección IP" },
+      { en: "subnet", ipa: "/ˈsʌb.net/", say: "SÁB-net", es: "subred" },
+      { en: "dot", ipa: "/dɑːt/", say: "DOT", es: "punto (en una IP)" },
+      { en: "slash", ipa: "/slæʃ/", say: "SLASH", es: "diagonal (/24)" },
+      { en: "DNS", ipa: "/ˌdiː.enˈes/", say: "di-en-ÉS", es: "sistema de nombres de dominio" },
+      { en: "packet loss", ipa: "/ˈpæk.ɪt lɔːs/", say: "PÁ-quet LOS", es: "pérdida de paquetes" },
+    ],
+    phrases: [
+      { en: "What is the IP address of the server?", es: "¿Cuál es la dirección IP del servidor?" },
+      { en: "The IP address is ten dot zero dot zero dot one.", es: "La IP es 10.0.0.1." },
+      { en: "The subnet is slash twenty-four.", es: "La subred es /24." },
+      { en: "The DNS server is not responding.", es: "El servidor DNS no responde." },
+      { en: "We have packet loss on the link.", es: "Tenemos pérdida de paquetes en el enlace." },
+    ],
+    exercises: [
+      { type: "choice", q: "¿Cómo se lee /24?", options: ["slash twenty-four", "bar twenty-four", "dot twenty-four"], answer: 0 },
+      { type: "choice", q: "10.0.0.1 se lee:", options: ["ten point zero point zero point one", "ten dot zero dot zero dot one", "ten zero zero one"], answer: 1 },
+      { type: "order", es: "¿Cuál es la dirección IP del servidor?", en: "What is the IP address of the server?" },
+      { type: "speak", en: "We have packet loss on the link." },
+    ],
+  },
+
+  // ---------- Nivel 2 (70% inglés) ----------
+  {
+    id: "it-2-incident", track: "it", stage: 2, level: "B1", title: "Reporting an incident",
+    intro: "To report an incident, say three things: what is happening, the impact, and what you are doing now. Use the present continuous for actions in progress: «We are investigating». (Usa presente continuo para lo que estás haciendo ahora.)",
+    terms: [
+      { en: "incident", ipa: "/ˈɪn.sə.dənt/", say: "ÍN-si-dent", es: "incidente" },
+      { en: "impact", ipa: "/ˈɪm.pækt/", say: "ÍM-pact", es: "impacto" },
+      { en: "outage", ipa: "/ˈaʊ.t̬ɪdʒ/", say: "ÁU-tich", es: "caída / interrupción del servicio" },
+      { en: "root cause", ipa: "/ˌruːt ˈkɑːz/", say: "RUT CÓS", es: "causa raíz" },
+      { en: "update", ipa: "/ˈʌp.deɪt/", say: "ÁP-deit", es: "actualización (de estado)" },
+      { en: "ETA", ipa: "/ˌiː.tiːˈeɪ/", say: "i-ti-ÉI", es: "tiempo estimado" },
+    ],
+    phrases: [
+      { en: "We have a P1 incident affecting the main office.", es: "Tenemos un incidente P1 que afecta la oficina principal." },
+      { en: "The core switch is down and users can't access the internet.", es: "El switch core está caído y los usuarios no tienen internet." },
+      { en: "The impact is around two hundred users.", es: "El impacto es de unos doscientos usuarios." },
+      { en: "We are investigating the root cause.", es: "Estamos investigando la causa raíz." },
+      { en: "The ETA for resolution is thirty minutes.", es: "El tiempo estimado de solución es de treinta minutos." },
+      { en: "I will send an update in fifteen minutes.", es: "Enviaré una actualización en quince minutos." },
+    ],
+    exercises: [
+      { type: "choice", q: "We ___ the root cause right now.", options: ["investigate", "are investigating", "investigated"], answer: 1 },
+      { type: "choice", q: "«Outage» means:", options: ["An interruption of service", "A new server", "A security policy"], answer: 0 },
+      { type: "order", es: "Enviaré una actualización en quince minutos.", en: "I will send an update in fifteen minutes." },
+      { type: "speak", en: "We are investigating the root cause." },
+    ],
+  },
+  {
+    id: "it-2-troubleshooting", track: "it", stage: 2, level: "B1", title: "Troubleshooting step by step",
+    intro: "When you explain what you did, use the past simple and sequence words: First, Then, After that, Finally. Many IT verbs are irregular: run → ran, find → found, shut → shut, bring → brought.",
+    terms: [
+      { en: "troubleshoot", ipa: "/ˈtrʌb.əl.ʃuːt/", say: "TRÁ-bol-shut", es: "diagnosticar y resolver fallas" },
+      { en: "latency", ipa: "/ˈleɪ.t̬ən.si/", say: "LÉI-ten-si", es: "latencia" },
+      { en: "traceroute", ipa: "/ˈtreɪs.ruːt/", say: "TRÉIS-rut", es: "comando para ver la ruta de los paquetes" },
+      { en: "flapping", ipa: "/ˈflæp.ɪŋ/", say: "FLÁ-ping", es: "interfaz que sube y baja repetidamente" },
+      { en: "workaround", ipa: "/ˈwɝːk.ə.raʊnd/", say: "UÉRK-a-raund", es: "solución temporal" },
+      { en: "restored", ipa: "/rɪˈstɔːrd/", say: "ri-STÓRD", es: "restablecido" },
+    ],
+    phrases: [
+      { en: "First, I checked the physical connection.", es: "Primero, revisé la conexión física." },
+      { en: "Then, I pinged the default gateway and it failed.", es: "Luego, hice ping al gateway y falló." },
+      { en: "After that, I ran a traceroute and found high latency on the WAN link.", es: "Después, ejecuté un traceroute y encontré latencia alta en el enlace WAN." },
+      { en: "The interface was flapping, so I shut it down and brought it back up.", es: "La interfaz estaba flapeando, así que la apagué y la volví a levantar." },
+      { en: "We applied a workaround while we wait for the vendor.", es: "Aplicamos una solución temporal mientras esperamos al proveedor." },
+      { en: "Finally, the service was restored.", es: "Finalmente, el servicio se restableció." },
+    ],
+    exercises: [
+      { type: "choice", q: "Past of «run» (run a command):", options: ["runned", "ran", "run"], answer: 1 },
+      { type: "choice", q: "An interface that goes up and down repeatedly is:", options: ["flapping", "floating", "failing over"], answer: 0 },
+      { type: "order", es: "Primero, revisé la conexión física.", en: "First, I checked the physical connection." },
+      { type: "speak", en: "Finally, the service was restored." },
+    ],
+  },
+  {
+    id: "it-2-ticket", track: "it", stage: 2, level: "B2", title: "Writing a ticket (ServiceNow / Jira)",
+    intro: "Tickets use short, clear sentences with a fixed structure: Short description, Impact, Steps taken, Next steps, Status, Resolution. Articles and subjects are often dropped: «Rebooted the edge router» instead of «I rebooted the edge router».",
+    terms: [
+      { en: "escalate", ipa: "/ˈes.kə.leɪt/", say: "ÉS-ca-leit", es: "escalar (a otro nivel o equipo)" },
+      { en: "priority", ipa: "/praɪˈɔːr.ə.t̬i/", say: "prai-Ó-ri-ti", es: "prioridad" },
+      { en: "affected", ipa: "/əˈfek.tɪd/", say: "a-FÉC-ted", es: "afectados" },
+      { en: "circuit", ipa: "/ˈsɝː.kɪt/", say: "SÉR-quit", es: "circuito (enlace del proveedor)" },
+      { en: "faulty", ipa: "/ˈfɑːl.t̬i/", say: "FÓL-ti", es: "defectuoso" },
+      { en: "ISP", ipa: "/ˌaɪ.esˈpiː/", say: "ai-es-PÍ", es: "proveedor de internet" },
+    ],
+    phrases: [
+      { en: "Short description: Internet outage at the main office.", es: "Descripción corta: caída de internet en la oficina principal." },
+      { en: "Impact: High. Around two hundred users are affected.", es: "Impacto: alto. Unos doscientos usuarios afectados." },
+      { en: "Steps taken: rebooted the edge router and verified the ISP circuit.", es: "Acciones realizadas: se reinició el router de borde y se verificó el circuito del ISP." },
+      { en: "Next steps: escalate to the ISP and monitor the circuit.", es: "Siguientes pasos: escalar al ISP y monitorear el circuito." },
+      { en: "Resolution: the ISP replaced a faulty fiber module.", es: "Resolución: el ISP reemplazó un módulo de fibra defectuoso." },
+    ],
+    exercises: [
+      { type: "choice", q: "Which field describes what you already did?", options: ["Next steps", "Steps taken", "Short description"], answer: 1 },
+      { type: "choice", q: "«Escalate to the ISP» means:", options: ["Send the issue to the internet provider for action", "Close the ticket", "Increase the bandwidth"], answer: 0 },
+      { type: "order", es: "Escala el ticket al equipo de redes.", en: "Escalate the ticket to the network team." },
+      { type: "speak", en: "Around two hundred users are affected." },
+    ],
+  },
+
+  // ---------- Nivel 3 (100% inglés) ----------
+  {
+    id: "it-3-cloud", track: "it", stage: 3, level: "C1", title: "Cloud networking (AWS / Azure)",
+    intro: "In the cloud, the network is software-defined. AWS uses VPCs with subnets spread across Availability Zones; Azure uses Virtual Networks (VNets). On-premises connectivity is usually a site-to-site VPN or a dedicated link such as AWS Direct Connect or Azure ExpressRoute.",
+    terms: [
+      { en: "VPC", ipa: "/ˌviː.piːˈsiː/", say: "vi-pi-SÍ", es: "nube privada virtual (AWS)" },
+      { en: "Availability Zone", ipa: "/əˌveɪ.ləˈbɪl.ə.t̬i zoʊn/", say: "a-vei-la-BÍ-li-ti SÓUN", es: "zona de disponibilidad" },
+      { en: "stateful", ipa: "/ˈsteɪt.fəl/", say: "STÉIT-ful", es: "con estado (recuerda las conexiones)" },
+      { en: "peering", ipa: "/ˈpɪr.ɪŋ/", say: "PÍ-ring", es: "interconexión directa entre redes" },
+      { en: "load balancer", ipa: "/ˈloʊd ˌbæl.ən.sɚ/", say: "LÓUD BÁ-lan-ser", es: "balanceador de carga" },
+      { en: "on-premises", ipa: "/ˌɑːnˈprem.ɪ.sɪz/", say: "on-PRÉ-mi-sis", es: "en sitio (data center propio)" },
+    ],
+    phrases: [
+      { en: "Each VPC is divided into public and private subnets.", es: "Cada VPC se divide en subredes públicas y privadas." },
+      { en: "We deployed the workloads across two Availability Zones for high availability.", es: "Desplegamos las cargas en dos zonas de disponibilidad para alta disponibilidad." },
+      { en: "Security groups are stateful, while network ACLs are stateless.", es: "Los security groups tienen estado; las ACL de red no." },
+      { en: "The data center connects to AWS through Direct Connect, with a site-to-site VPN as a backup.", es: "El data center se conecta a AWS por Direct Connect, con una VPN sitio a sitio de respaldo." },
+      { en: "We use VNet peering to connect the two virtual networks.", es: "Usamos VNet peering para conectar las dos redes virtuales." },
+      { en: "The load balancer distributes traffic across healthy instances.", es: "El balanceador distribuye el tráfico entre las instancias sanas." },
+    ],
+    exercises: [
+      { type: "choice", q: "Which statement is correct?", options: ["Network ACLs are stateful.", "Security groups are stateful.", "Security groups are stateless."], answer: 1 },
+      { type: "choice", q: "The Azure equivalent of an AWS VPC is a:", options: ["VNet", "Subnet", "ExpressRoute"], answer: 0 },
+      { type: "order", es: "Desplegamos las cargas en dos zonas de disponibilidad.", en: "We deployed the workloads across two Availability Zones." },
+      { type: "speak", en: "The load balancer distributes traffic across healthy instances." },
+    ],
+  },
+  {
+    id: "it-3-zero-trust", track: "it", stage: 3, level: "C1", title: "Zero Trust and presenting a project",
+    intro: "Zero Trust means «never trust, always verify»: every access request is authenticated, authorized and continuously validated, regardless of network location. Key ideas: least privilege, micro-segmentation and assume breach. When you present, signpost: «Let me walk you through…», «Moving on to…».",
+    terms: [
+      { en: "least privilege", ipa: "/ˌliːst ˈprɪv.əl.ɪdʒ/", say: "LIST PRÍ-vi-lich", es: "mínimo privilegio" },
+      { en: "micro-segmentation", ipa: "/ˌmaɪ.kroʊ.seɡ.menˈteɪ.ʃən/", say: "mai-crou-seg-men-TÉI-shon", es: "microsegmentación" },
+      { en: "lateral movement", ipa: "/ˈlæt̬.ɚ.əl ˈmuːv.mənt/", say: "LÁ-te-ral MÚV-ment", es: "movimiento lateral (de un atacante)" },
+      { en: "attack surface", ipa: "/əˈtæk ˌsɝː.fɪs/", say: "a-TÁK SÉR-fis", es: "superficie de ataque" },
+      { en: "posture", ipa: "/ˈpɑːs.tʃɚ/", say: "PÓS-cher", es: "postura / estado de seguridad" },
+    ],
+    phrases: [
+      { en: "Zero Trust means we never trust by default and always verify.", es: "Zero Trust significa no confiar por defecto y verificar siempre." },
+      { en: "We are implementing micro-segmentation to limit lateral movement.", es: "Implementamos microsegmentación para limitar el movimiento lateral." },
+      { en: "Access is granted based on identity, device posture and least privilege.", es: "El acceso se otorga según identidad, postura del dispositivo y mínimo privilegio." },
+      { en: "The goal of this project is to reduce our attack surface.", es: "El objetivo de este proyecto es reducir nuestra superficie de ataque." },
+      { en: "Let me walk you through the proposed architecture.", es: "Permítanme explicarles la arquitectura propuesta." },
+      { en: "Are there any questions before we move on?", es: "¿Hay preguntas antes de continuar?" },
+    ],
+    exercises: [
+      { type: "choice", q: "The core principle of Zero Trust is:", options: ["Trust internal traffic by default", "Never trust, always verify", "Allow all traffic inside the VPN"], answer: 1 },
+      { type: "choice", q: "Micro-segmentation mainly helps to:", options: ["limit lateral movement", "increase bandwidth", "reduce latency"], answer: 0 },
+      { type: "order", es: "Permítanme explicarles la arquitectura propuesta.", en: "Let me walk you through the proposed architecture." },
+      { type: "speak", en: "Access is granted based on identity and least privilege." },
+    ],
+  },
+
+  // ---------- Nivel 4 (100% inglés, ejecutivo) ----------
+  {
+    id: "it-4-major-incident", track: "it", stage: 4, level: "C2", title: "Leading a major incident call",
+    intro: "As the incident commander you set the rhythm: state the facts, assign owners, time-box the investigation and schedule the next update. Stay calm, concise and neutral; avoid blame during the call and keep it for the post-mortem.",
+    terms: [
+      { en: "bridge call", ipa: "/ˈbrɪdʒ ˌkɔːl/", say: "BRICH COL", es: "llamada de crisis" },
+      { en: "stakeholder", ipa: "/ˈsteɪkˌhoʊl.dɚ/", say: "STÉIK-joul-der", es: "parte interesada" },
+      { en: "fail over", ipa: "/ˌfeɪl ˈoʊ.vɚ/", say: "feil-ÓU-ver", es: "conmutar al sitio o equipo de respaldo" },
+      { en: "time-box", ipa: "/ˈtaɪm.bɑːks/", say: "TÁIM-box", es: "limitar a un tiempo fijo" },
+      { en: "post-mortem", ipa: "/ˌpoʊstˈmɔːr.t̬əm/", say: "poust-MÓR-tem", es: "análisis posterior al incidente" },
+    ],
+    phrases: [
+      { en: "Thanks for joining. This is the major incident bridge for the data center outage.", es: "Gracias por unirse. Esta es la llamada de crisis por la caída del data center." },
+      { en: "Let's keep this line for troubleshooting only.", es: "Mantengamos esta línea solo para troubleshooting." },
+      { en: "Who owns the core network? Please give us a status in two minutes.", es: "¿Quién es responsable de la red core? Denos un estado en dos minutos." },
+      { en: "What changed in the last twenty-four hours?", es: "¿Qué cambió en las últimas veinticuatro horas?" },
+      { en: "Let's time-box this at fifteen minutes; if there's no progress, we'll fail over to the secondary site.", es: "Limitemos esto a quince minutos; si no hay avance, conmutamos al sitio secundario." },
+      { en: "Next update to stakeholders at ten thirty.", es: "Próxima actualización a las partes interesadas a las diez y media." },
+    ],
+    exercises: [
+      { type: "choice", q: "The best first question during a sudden outage is:", options: ["Whose fault is this?", "What changed in the last twenty-four hours?", "Can we discuss this tomorrow?"], answer: 1 },
+      { type: "choice", q: "«Fail over to the secondary site» means:", options: ["Move the service to the backup site", "Shut down the secondary site", "Report a failure to the vendor"], answer: 0 },
+      { type: "order", es: "Próxima actualización a las partes interesadas a las diez y media.", en: "Next update to stakeholders at ten thirty." },
+      { type: "speak", en: "Let's time-box this at fifteen minutes." },
+    ],
+  },
+  {
+    id: "it-4-vendors", track: "it", stage: 4, level: "C2", title: "Negotiating with vendors and IT strategy",
+    intro: "In negotiations, be polite but firm: acknowledge, state your constraint, propose a trade-off. With executives, talk about risk, cost and business value rather than technology: «This reduces operational risk» is stronger than «This is a better switch».",
+    terms: [
+      { en: "proposal", ipa: "/prəˈpoʊ.zəl/", say: "pro-PÓU-sal", es: "propuesta" },
+      { en: "SLA", ipa: "/ˌes.elˈeɪ/", say: "es-el-ÉI", es: "acuerdo de nivel de servicio" },
+      { en: "agreement", ipa: "/əˈɡriː.mənt/", say: "a-GRÍ-ment", es: "acuerdo / contrato" },
+      { en: "budget", ipa: "/ˈbʌdʒ.ɪt/", say: "BÁ-chet", es: "presupuesto" },
+      { en: "leverage", ipa: "/ˈlev.ɚ.ɪdʒ/", say: "LÉ-ve-rich", es: "poder de negociación / aprovechar" },
+      { en: "align", ipa: "/əˈlaɪn/", say: "a-LÁIN", es: "alinear / ponerse de acuerdo" },
+    ],
+    phrases: [
+      { en: "We appreciate the proposal, but the pricing is above our budget.", es: "Agradecemos la propuesta, pero el precio está por encima de nuestro presupuesto." },
+      { en: "If we sign a three-year agreement, could you offer a better rate?", es: "Si firmamos un acuerdo de tres años, ¿podrían ofrecer una mejor tarifa?" },
+      { en: "We need a four-hour replacement SLA for our critical sites.", es: "Necesitamos un SLA de reemplazo de cuatro horas para los sitios críticos." },
+      { en: "Our priority is to reduce operational risk, not just cost.", es: "Nuestra prioridad es reducir el riesgo operativo, no solo el costo." },
+      { en: "This investment will pay for itself within eighteen months.", es: "Esta inversión se pagará sola en dieciocho meses." },
+      { en: "Let's align on the next steps and put them in writing.", es: "Pongámonos de acuerdo en los siguientes pasos y dejémoslos por escrito." },
+    ],
+    exercises: [
+      { type: "choice", q: "The most professional way to push back on price:", options: ["That's way too expensive.", "We appreciate the proposal, but the pricing is above our budget.", "No, thanks."], answer: 1 },
+      { type: "choice", q: "An SLA defines:", options: ["The agreed service levels, such as response and replacement times", "The network topology", "The firewall rules"], answer: 0 },
+      { type: "order", es: "Pongámonos de acuerdo en los siguientes pasos.", en: "Let's align on the next steps." },
+      { type: "speak", en: "We need a four-hour replacement SLA for our critical sites." },
+    ],
+  },
+];

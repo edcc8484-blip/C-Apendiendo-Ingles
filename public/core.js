@@ -6,7 +6,7 @@ const STORE_KEY = "ingles-rapido.v1";
 const DEFAULTS = {
   level: "A1", rate: 0.95, dailyGoal: 50, autoSpeak: true,
   xpByDay: {}, lessonsDone: {}, cards: {}, newByDay: {}, talkByDay: {}, dictByDay: {},
-  customVocab: [], books: {}, verbQuiz: { right: 0, total: 0 },
+  customVocab: [], books: {}, verbQuiz: { right: 0, total: 0 }, lessonTrack: "general",
 };
 function load() {
   try { return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(STORE_KEY) || "{}") }; }
@@ -39,7 +39,7 @@ const $ = (sel, root = document) => root.querySelector(sel);
 const app = $("#app");
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const shuffle = (a) => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
-const LEVEL_ORDER = ["A1", "A2", "B1", "B2"];
+const LEVEL_ORDER = ["A1", "A2", "B1", "B2", "C1", "C2"];
 const levelIdx = (l) => LEVEL_ORDER.indexOf(l);
 
 const ICON = {

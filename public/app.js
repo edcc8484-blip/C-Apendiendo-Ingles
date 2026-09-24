@@ -7,6 +7,11 @@ import {
 import { renderBooks, renderBook, stopBook } from "./library.js";
 import { renderVerbs, renderVerb, renderVerbQuiz } from "./verbs-view.js";
 import { BOOKS } from "./books.js";
+import { IT_LESSONS, IT_STAGES } from "./it-track.js";
+
+const ALL_LESSONS = [...LESSONS, ...IT_LESSONS];
+// La ruta de Redes se desbloquea en orden: cada lección exige completar la anterior.
+const itUnlocked = (l) => { const i = IT_LESSONS.indexOf(l); return i <= 0 || !!S.lessonsDone[IT_LESSONS[i - 1].id]; };
 
 // ---------- Navegación ----------
 let view = "home";
@@ -47,6 +52,7 @@ function nextChapter() {
   return { done: true, title: "Audiolibros terminados", sub: "¡Leíste todos los libros!", go: "books" };
 }
 function nextLesson() {
+  if (S.lessonTrack === "it") return IT_LESSONS.find((l) => !S.lessonsDone[l.id]);
   return LESSONS.find((l) => !S.lessonsDone[l.id] && levelIdx(l.level) <= levelIdx(S.level))
     || LESSONS.find((l) => !S.lessonsDone[l.id]);
 }
@@ -85,7 +91,7 @@ function renderHome() {
     <div class="grid">
       <section class="card"><div class="muted small">Racha</div><div class="big-num">${streak()} ${streak() === 1 ? "día" : "días"}</div></section>
       <section class="card"><div class="muted small">Palabras aprendidas</div><div class="big-num">${learnedCount()} <span class="small muted">/ ${allVocab().length}</span></div></section>
-      <section class="card"><div class="muted small">Lecciones</div><div class="big-num">${Object.keys(S.lessonsDone).length} <span class="small muted">/ ${LESSONS.length}</span></div></section>
+      <section class="card"><div class="muted small">Lecciones</div><div class="big-num">${Object.keys(S.lessonsDone).length} <span class="small muted">/ ${ALL_LESSONS.length}</span></div></section>
       <section class="card"><div class="muted small">XP total</div><div class="big-num">${totalXP()}</div></section>
     </div>
     <section class="card">
@@ -101,7 +107,7 @@ function renderHome() {
           <select id="set-goal">${[30, 50, 100, 150].map((v) => `<option ${v === S.dailyGoal ? "selected" : ""}>${v}</option>`).join("")}</select>
         </label>
       </div>
-      <p class="small muted" style="margin-top:10px">A1 principiante · A2 básico · B1 intermedio · B2 intermedio alto. El nivel ajusta al tutor y el orden de las lecciones.</p>
+      <p class="small muted" style="margin-top:10px">A1 principiante · A2 básico · B1 intermedio · B2 intermedio alto · C1 avanzado · C2 dominio. El nivel ajusta al tutor (y cuánto español usa) y el orden de las lecciones.</p>
       ${canListen ? "" : `<p class="feedback info small">Tu navegador no permite reconocimiento de voz. Usa Google Chrome o Microsoft Edge para practicar hablando.</p>`}
     </section>`;
   app.querySelectorAll("[data-go]").forEach((b) => b.onclick = () => go(b.dataset.go, b.dataset.arg ? JSON.parse(b.dataset.arg) : {}));
@@ -111,23 +117,41 @@ function renderHome() {
 }
 
 // ---------- Lecciones ----------
+function lessonButton(l) {
+  const locked = l.track === "it" && !itUnlocked(l);
+  const badge = S.lessonsDone[l.id] ? '<span class="badge done">Completada</span>'
+    : locked ? '<span class="badge locked">🔒 Completa la anterior</span>' : '<span class="badge">Nueva</span>';
+  return `<button class="btn lesson-item" data-id="${l.id}" ${locked ? "disabled" : ""}>
+    <span class="grow">${esc(l.title)}<br><span class="small muted">${l.terms ? `${l.terms.length} términos · ` : ""}${l.phrases.length} frases · ${l.exercises.length} ejercicios</span></span>${badge}</button>`;
+}
 function renderLessons() {
-  app.innerHTML = LEVEL_ORDER.filter((lv) => LESSONS.some((l) => l.level === lv)).map((lv) => `
-    <section class="card">
-      <h2>Nivel ${lv}</h2>
-      <div class="stack">
-        ${LESSONS.filter((l) => l.level === lv).map((l) => `
-          <button class="btn lesson-item" data-id="${l.id}">
-            <span class="grow">${esc(l.title)}<br><span class="small muted">${l.phrases.length} frases · ${l.exercises.length} ejercicios</span></span>
-            ${S.lessonsDone[l.id] ? '<span class="badge done">Completada</span>' : '<span class="badge">Nueva</span>'}
-          </button>`).join("")}
-      </div>
-    </section>`).join("");
+  const it = S.lessonTrack === "it";
+  const seg = `<div class="seg" role="tablist" style="margin-bottom:14px">
+      <button class="${it ? "" : "on"}" data-track="general">Inglés general</button>
+      <button class="${it ? "on" : ""}" data-track="it">Redes y TI</button>
+    </div>`;
+  const body = it
+    ? `<section class="card"><h1>Inglés para Redes e Infraestructura</h1>
+        <p class="muted">Ruta de 4 niveles, de principiante a ejecutivo. Cada término trae su IPA y pronunciación figurada. Los ejercicios de cada lección son su quiz: al completarla se desbloquea la siguiente.</p></section>`
+      + IT_STAGES.map((st) => {
+        const ls = IT_LESSONS.filter((l) => l.stage === st.stage);
+        const done = ls.filter((l) => S.lessonsDone[l.id]).length;
+        return `<section class="card"><div class="row between"><h2>${esc(st.name)}</h2><span class="badge">${st.cefr}</span></div>
+          <div class="small muted" style="margin-bottom:10px">${done}/${ls.length} lecciones completadas</div>
+          <div class="stack">${ls.map(lessonButton).join("")}</div></section>`;
+      }).join("")
+    : LEVEL_ORDER.filter((lv) => LESSONS.some((l) => l.level === lv)).map((lv) => `
+      <section class="card"><h2>Nivel ${lv}</h2>
+        <div class="stack">${LESSONS.filter((l) => l.level === lv).map(lessonButton).join("")}</div>
+      </section>`).join("");
+  app.innerHTML = seg + body;
+  app.querySelectorAll("[data-track]").forEach((b) => b.onclick = () => { S.lessonTrack = b.dataset.track; save(); renderLessons(); });
   app.querySelectorAll("[data-id]").forEach((b) => b.onclick = () => go("lesson", { id: b.dataset.id }));
 }
 
 function renderLesson() {
-  const lesson = LESSONS.find((l) => l.id === ctx.id);
+  const lesson = ALL_LESSONS.find((l) => l.id === ctx.id);
+  S.lessonTrack = lesson.track || "general";
   ctx.phase ??= "learn";
   if (ctx.phase === "learn") {
     app.innerHTML = `
@@ -137,6 +161,15 @@ function renderLesson() {
         <h1 style="margin-top:8px">${esc(lesson.title)}</h1>
         <p>${esc(lesson.intro)}</p>
       </section>
+      ${lesson.terms ? `<section class="card">
+        <h2>Vocabulario técnico</h2>
+        ${lesson.terms.map((t, i) => `
+          <div class="phrase">
+            <button class="icon-btn" data-term="${i}" aria-label="Escuchar ${esc(t.en)}">${ICON.speaker}</button>
+            <div class="grow"><div><span class="en">${esc(t.en)}</span> <span class="ipa">${esc(t.ipa)}</span> <span class="say">${esc(t.say)}</span></div>
+              <div class="small muted">${esc(t.es)}</div></div>
+          </div>`).join("")}
+      </section>` : ""}
       <section class="card">
         <div class="row between"><h2>Frases clave</h2><button class="btn" id="play-all">${ICON.speaker} Escuchar todas</button></div>
         ${lesson.phrases.map((p, i) => `
@@ -149,6 +182,7 @@ function renderLesson() {
       <button class="btn primary block" id="start">Practicar (${lesson.exercises.length} ejercicios)</button>`;
     $("#back").onclick = () => go("lessons");
     app.querySelectorAll("[data-say]").forEach((b) => b.onclick = () => speak(lesson.phrases[+b.dataset.say].en));
+    app.querySelectorAll("[data-term]").forEach((b) => b.onclick = () => speak(lesson.terms[+b.dataset.term].en));
     app.querySelectorAll("[data-slow]").forEach((b) => b.onclick = () => speak(lesson.phrases[+b.dataset.slow].en, { rate: 0.65 }));
     $("#play-all").onclick = async () => { stopSpeaking(); for (const p of lesson.phrases) { await speak(p.en); await new Promise((r) => setTimeout(r, 500)); } };
     $("#start").onclick = () => { ctx.phase = "practice"; ctx.i = 0; ctx.correct = 0; render(); };
@@ -429,6 +463,17 @@ const SCENARIOS = {
   doctor: ["En el médico", "Hello, please have a seat. What seems to be the problem today?", "Hola, siéntese por favor. ¿Cuál es el problema hoy?"],
   shopping: ["De compras", "Hi! Are you looking for anything in particular today?", "¡Hola! ¿Busca algo en particular hoy?"],
   directions: ["Pidiendo direcciones", "Hi, you look a little lost. Can I help you find something?", "Hola, parece un poco perdido. ¿Le ayudo a encontrar algo?"],
+  "it-coach": ["Clase: tutor de Redes", "Hi! I'm Emma, your English coach for networking. Let's start: is the router up or down? Answer with a full sentence.", "¡Hola! Soy Emma, tu coach de inglés para redes. Empecemos: ¿el router está arriba o caído? Responde con una oración completa."],
+  "it-incident": ["Incidente P1 (bridge call)", "This is the P1 bridge for the main office outage. What is the current status of the core switch?", "Esta es la llamada P1 por la caída de la oficina principal. ¿Cuál es el estado actual del switch core?"],
+  "it-ticket": ["Ticket en ServiceNow", "Let's document this incident in ServiceNow. What should we write in the short description?", "Documentemos este incidente en ServiceNow. ¿Qué escribimos en la descripción corta?"],
+  "it-vendor": ["Llamada con Cisco TAC", "Thank you for calling Cisco TAC. Can you give me the serial number and the software version of the device?", "Gracias por llamar a Cisco TAC. ¿Me da el número de serie y la versión de software del equipo?"],
+  "it-standup": ["Stand-up del equipo", "Good morning, team. Let's start the stand-up. What did you work on yesterday?", "Buenos días, equipo. Empecemos el stand-up. ¿En qué trabajaste ayer?"],
+};
+const scenarioOptions = () => {
+  const opt = ([k, [n]]) => `<option value="${k}" ${k === talk.scenario ? "selected" : ""}>${n}</option>`;
+  const all = Object.entries(SCENARIOS);
+  return `<optgroup label="Vida diaria">${all.filter(([k]) => !k.startsWith("it-")).map(opt).join("")}</optgroup>
+    <optgroup label="Redes y TI">${all.filter(([k]) => k.startsWith("it-")).map(opt).join("")}</optgroup>`;
 };
 const talk = { scenario: "free", history: [], busy: false };
 function startScenario(key) {
@@ -444,7 +489,7 @@ async function renderTalk() {
   app.innerHTML = `
     <section class="card">
       <div class="row between">
-        <label>Situación <select id="scn">${Object.entries(SCENARIOS).map(([k, [n]]) => `<option value="${k}" ${k === talk.scenario ? "selected" : ""}>${n}</option>`).join("")}</select></label>
+        <label>Situación <select id="scn">${scenarioOptions()}</select></label>
         <label class="row small"><input type="checkbox" id="auto" ${S.autoSpeak ? "checked" : ""}> Leer respuestas en voz alta</label>
       </div>
       ${off ? `<div class="feedback info small">${tutorStatus.offline
@@ -484,13 +529,16 @@ function drawChat() {
     ? `<div class="msg me">${esc(m.text)}</div>${m.correction || m.tip ? `<div class="correction">
         ${m.correction ? `Mejor dicho: <span class="en">${esc(m.correction)}</span> <button class="icon-btn" data-sayc="${i}" aria-label="Escuchar corrección" style="width:28px;height:28px;vertical-align:middle">${ICON.speaker}</button>` : ""}
         ${m.tip ? `<div class="small" style="margin-top:4px">${esc(m.tip)}</div>` : ""}</div>` : ""}`
-    : `<div class="msg bot">${esc(m.text)}
+    : `${m.lesson ? `<div class="lesson-box"><h4>Core Concept</h4>${esc(m.lesson)}</div>` : ""}
+      <div class="msg bot">${m.lesson ? '<div class="small" style="font-weight:700;margin-bottom:2px">Your Turn</div>' : ""}${esc(m.text)}
         <div class="es" ${m.showEs ? "" : "hidden"}>${esc(m.es || "")}</div>
         ${m.words?.length ? `<div class="words">${m.words.map((w) => `<span><b>${esc(w.en)}</b> · ${esc(w.es)}</span>`).join("")}</div>` : ""}
+        ${m.terms?.length ? `<div class="terms">${m.terms.map((t) => `<button data-term="${esc(t.en)}"><b>${esc(t.en)}</b><span class="ipa">${esc(t.ipa)}</span><span class="say">${esc(t.say_es)}</span><span class="small muted">${esc(t.es)}</span></button>`).join("")}</div>` : ""}
         <div class="tools"><button data-say="${i}">Escuchar</button><button data-slow="${i}">Lento</button><button data-es="${i}">${m.showEs ? "Ocultar" : "Traducir"}</button></div>
       </div>`).join("") + (talk.busy ? `<div class="typing">Emma está escribiendo…</div>` : "");
   chat.querySelectorAll("[data-say]").forEach((b) => b.onclick = () => speak(talk.history[+b.dataset.say].text));
   chat.querySelectorAll("[data-slow]").forEach((b) => b.onclick = () => speak(talk.history[+b.dataset.slow].text, { rate: 0.7 }));
+  chat.querySelectorAll("[data-term]").forEach((b) => b.onclick = () => speak(b.dataset.term));
   chat.querySelectorAll("[data-sayc]").forEach((b) => b.onclick = () => speak(talk.history[+b.dataset.sayc].correction));
   chat.querySelectorAll("[data-es]").forEach((b) => b.onclick = () => { const m = talk.history[+b.dataset.es]; m.showEs = !m.showEs; drawChat(); });
   chat.scrollTop = chat.scrollHeight;
@@ -512,7 +560,7 @@ async function sendTalk(text, spoken) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Error del tutor");
     userMsg.correction = data.correction; userMsg.tip = data.tip_es;
-    talk.history.push({ role: "assistant", text: data.reply, es: data.reply_es, words: data.new_words || [] });
+    talk.history.push({ role: "assistant", text: data.reply, es: data.reply_es, words: data.new_words || [], lesson: data.lesson || "", terms: data.terms || [] });
     addXP(spoken ? 3 : 2);
     if (spoken) bump("talkByDay");
     talk.busy = false;

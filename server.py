@@ -31,7 +31,14 @@ LEVELS = {
     "A2": "elementary (A2). Short sentences, simple past and future, common everyday vocabulary.",
     "B1": "intermediate (B1). Natural sentences, common phrasal verbs and idioms, varied tenses.",
     "B2": "upper-intermediate (B2). Natural native-like speech, idioms, nuanced vocabulary.",
+    "C1": "advanced (C1). Fluent, precise professional English, complex structures and idioms.",
+    "C2": "proficient (C2). Native-level executive English: nuance, persuasion, diplomacy.",
 }
+
+# Cuánto español usar según el nivel (ruta de Redes).
+SPANISH_RATIO = {"A1": "about 70% Spanish and 30% English", "A2": "about 70% Spanish and 30% English",
+                 "B1": "about 30% Spanish and 70% English", "B2": "about 30% Spanish and 70% English",
+                 "C1": "100% English", "C2": "100% English"}
 
 SCENARIOS = {
     "free": "a friendly casual chat about the learner's life, hobbies, work and plans",
@@ -42,7 +49,26 @@ SCENARIOS = {
     "doctor": "a visit to the doctor; you are the doctor asking about symptoms",
     "shopping": "shopping for clothes in a store; you are the shop assistant",
     "directions": "asking for directions in a city; you are a helpful local",
+    # Ruta de Redes e Infraestructura.
+    "it-coach": "a one-to-one English class for a Network and Infrastructure Analyst. Follow the TEACHING PROTOCOL below",
+    "it-incident": "a P1 incident bridge call: the core switch at the main office is down; you are the Incident Manager asking the network analyst (the learner) for status, impact, ETA and next steps",
+    "it-ticket": "working on a ServiceNow network incident ticket together; you are the service desk lead helping the learner write the short description, impact, steps taken and next steps",
+    "it-vendor": "a support call with a Cisco TAC engineer; you are the TAC engineer asking for the serial number, software version, logs and the troubleshooting done so far",
+    "it-standup": "the daily infrastructure team stand-up; you are the team lead asking what they did yesterday, what they will do today and if they have any blockers",
 }
+
+IT_CONTEXT = """The learner is a Network and Infrastructure Analyst (routing, switching, firewalls, IP addressing, Cisco/Juniper, AWS/Azure networking, ServiceNow/Jira, ITIL 4).
+Technical vocabulary must be 100% accurate to industry standards (Cisco CCNA/CCNP, ITIL 4, cloud networking).
+For every NEW technical term you use, add it to "terms" with its General American IPA and a Spanish-style figurative pronunciation (e.g. router -> /ˈraʊ.tɚ/ -> RÁU-ter)."""
+
+TEACHING_PROTOCOL = """TEACHING PROTOCOL (it-coach scenario):
+- Language mix for explanations ("lesson" and "tip_es"): {ratio}.
+- "correction" + "tip_es" = Feedback & Corrections on the learner's last message (grammar, vocabulary, pronunciation hints).
+  If they made a mistake, first give a hint in "tip_es" so they can self-correct; give the full answer only if they fail again.
+- "lesson" = Core Concept: one short grammar rule or networking term explained concisely (2-4 sentences).
+- "reply" = Simulated Practice + Your Turn: a short real networking scenario and ONE direct question they must answer in English. Keep it short because it is read aloud.
+- Always require full sentences. If the learner answers with one word or a fragment, do not move on: ask them to answer with a complete sentence.
+- Progress through the curriculum: Level 1 fundamentals + basic networking, Level 2 support and troubleshooting, Level 3 architecture/cloud/security, Level 4 executive communication. Match the learner's level."""
 
 SYSTEM_PROMPT = """You are "Emma", a warm, patient English conversation tutor for native Spanish speakers who want to speak English fast.
 
@@ -60,7 +86,8 @@ Corrections (the most valuable part for the learner):
 
 Other fields:
 - "reply_es": a natural Spanish translation of your reply.
-- "new_words": 0-3 useful words or short expressions from YOUR reply that a learner at this level may not know, with Spanish meaning. Empty array if none."""
+- "new_words": 0-3 useful words or short expressions from YOUR reply that a learner at this level may not know, with Spanish meaning. Empty array if none.
+- "lesson" and "terms": empty string / empty array unless the scenario instructions below ask for them."""
 
 TUTOR_SCHEMA = {
     "type": "object",
@@ -69,6 +96,19 @@ TUTOR_SCHEMA = {
         "reply_es": {"type": "string"},
         "correction": {"type": "string"},
         "tip_es": {"type": "string"},
+        "lesson": {"type": "string"},
+        "terms": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "en": {"type": "string"}, "ipa": {"type": "string"},
+                    "say_es": {"type": "string"}, "es": {"type": "string"},
+                },
+                "required": ["en", "ipa", "say_es", "es"],
+                "additionalProperties": False,
+            },
+        },
         "new_words": {
             "type": "array",
             "items": {
@@ -79,7 +119,7 @@ TUTOR_SCHEMA = {
             },
         },
     },
-    "required": ["reply", "reply_es", "correction", "tip_es", "new_words"],
+    "required": ["reply", "reply_es", "correction", "tip_es", "lesson", "terms", "new_words"],
     "additionalProperties": False,
 }
 
@@ -126,6 +166,10 @@ def ask_tutor(payload):
         f"Learner level: {LEVELS[level]}\n"
         f"Role-play scenario: {SCENARIOS[scenario]}."
     )
+    if scenario.startswith("it-"):
+        context += "\n\n" + IT_CONTEXT
+    if scenario == "it-coach":
+        context += "\n\n" + TEACHING_PROTOCOL.format(ratio=SPANISH_RATIO[level])
     response = get_client().beta.messages.create(
         model=MODEL,
         max_tokens=4000,
@@ -148,6 +192,8 @@ def ask_tutor(payload):
             "reply_es": "Hablemos de otra cosa. ¿Qué hiciste hoy?",
             "correction": "",
             "tip_es": "",
+            "lesson": "",
+            "terms": [],
             "new_words": [],
         }
     if response.stop_reason == "max_tokens":

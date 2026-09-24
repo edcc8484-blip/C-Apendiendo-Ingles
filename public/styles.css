@@ -283,3 +283,13 @@ button.verb-row:hover { background: var(--surface-2); }
   .toast { bottom: 32px; }
 }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+/* Ruta de Redes y TI */
+.ipa { font-family: "Segoe UI", "Lucida Sans Unicode", "Arial Unicode MS", sans-serif; color: var(--muted); font-size: .9rem; margin-left: 4px; }
+.say { font-size: .8rem; font-weight: 700; color: var(--accent); background: var(--accent-soft); border-radius: 6px; padding: 1px 6px; margin-left: 4px; }
+.badge.locked { background: var(--surface-2); color: var(--muted); }
+.lesson-item:disabled { opacity: .6; }
+.lesson-box { align-self: stretch; background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: 12px; padding: 10px 14px; font-size: .92rem; }
+.lesson-box h4 { margin: 0 0 4px; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; color: var(--accent); }
+.terms { display: grid; gap: 6px; margin-top: 8px; }
+.terms button { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px; text-align: left; background: var(--surface-2); border: 0; border-radius: 8px; padding: 6px 10px; }

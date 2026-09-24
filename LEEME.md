@@ -7,12 +7,12 @@ App para aprender a **hablar y entender inglés** rápido, con práctica diaria 
 | Sección | Para qué sirve |
 |---|---|
 | **Inicio** | Tu plan del día, meta de XP, racha de días y ajustes (nivel, velocidad de voz). |
-| **Lecciones** | 12 lecciones cortas A1 → B1: frases clave con audio y ejercicios (opción múltiple, ordenar palabras, decirlo en voz alta con evaluación de pronunciación). |
+| **Lecciones** | Dos rutas. **Inglés general**: 12 lecciones A1 → B1. **Redes y TI**: 11 lecciones en 4 niveles (A1 → C2) para analistas de redes e infraestructura: componentes, comandos, IPs, reporte de incidentes, troubleshooting, tickets, cloud networking, Zero Trust, llamadas de crisis y negociación con proveedores. Cada término técnico trae IPA y pronunciación figurada; cada lección se desbloquea al completar el quiz de la anterior. |
 | **Palabras** | ~130 palabras de uso frecuente con **repaso espaciado**: cada palabra vuelve justo antes de que la olvides. 10 nuevas por día. |
 | **Escuchar** | Dictado (escucha y escribe) y diálogos con preguntas de comprensión, a velocidad normal o lenta. |
 | **Libros** | Audiolibros graduados (A1 → B1): 4 libros, 12 capítulos. Escucha con el texto resaltado frase por frase, **toca cualquier palabra** para ver su significado, sus formas si es verbo y agregarla a tus tarjetas. Al terminar, **léelo tú en voz alta**: te escucha frase por frase y marca las palabras que hay que mejorar. |
 | **Verbos** | Diccionario de 280 verbos (117 irregulares) con pasado, participio, -ing y 3ª persona, y su conjugación completa en 9 tiempos (afirmativa, negativa y pregunta), con audio. Incluye práctica de irregulares. |
-| **Hablar** | Conversación por voz con **Emma**, tutora con IA (Claude). Escenarios: cafetería, aeropuerto, hotel, entrevista de trabajo, médico, compras, direcciones o charla libre. Corrige tus errores y te explica en español. |
+| **Hablar** | Conversación por voz con **Emma**, tutora con IA (Claude). Escenarios de vida diaria (cafetería, aeropuerto, hotel, entrevista, médico, compras, direcciones, charla libre) y de **Redes y TI**: clase con tutor (formato Feedback → Core Concept → Your Turn, con más o menos español según tu nivel), incidente P1, ticket en ServiceNow, llamada con Cisco TAC y stand-up. Corrige tus errores y te explica en español. |
 
 El progreso se guarda en el navegador (sin cuentas ni login).
 
