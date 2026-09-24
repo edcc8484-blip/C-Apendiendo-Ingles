@@ -1,7 +1,8 @@
 """Inglés Rápido — servidor local.
 
-Sirve la app web (carpeta ./public) y expone POST /api/tutor, que habla con
-Claude para el tutor de conversación. La API key se queda en el servidor.
+Sirve la app web (carpeta ./public) y expone dos endpoints que usan Claude:
+POST /api/tutor (tutor de conversación) y POST /api/explain (significado de una
+palabra o traducción de una frase de los audiolibros). La API key se queda en el servidor.
 
 Uso:
     set ANTHROPIC_API_KEY=sk-ant-...        (PowerShell: $env:ANTHROPIC_API_KEY="sk-ant-...")
@@ -156,6 +157,76 @@ def ask_tutor(payload):
     return json.loads(text)
 
 
+EXPLAIN_SYSTEM = """You help native Spanish speakers who are learning English and reading a graded book.
+Answer in Spanish, briefly and simply, for a learner. Base the meaning on how the word is used in the given sentence."""
+
+WORD_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "meaning_es": {"type": "string"},
+        "part_of_speech_es": {"type": "string"},
+        "base_form": {"type": "string"},
+        "example_en": {"type": "string"},
+        "example_es": {"type": "string"},
+        "note_es": {"type": "string"},
+    },
+    "required": ["meaning_es", "part_of_speech_es", "base_form", "example_en", "example_es", "note_es"],
+    "additionalProperties": False,
+}
+SENTENCE_SCHEMA = {
+    "type": "object",
+    "properties": {"translation_es": {"type": "string"}, "note_es": {"type": "string"}},
+    "required": ["translation_es", "note_es"],
+    "additionalProperties": False,
+}
+
+
+def explain(payload):
+    kind = payload.get("kind")
+    sentence = str(payload.get("sentence", "")).strip()[:600]
+    if kind == "word":
+        word = str(payload.get("word", "")).strip()[:60]
+        if not word:
+            raise ValueError("Falta la palabra.")
+        prompt = (
+            f'Word: "{word}"\nSentence: "{sentence}"\n\n'
+            "meaning_es: the Spanish meaning in this sentence (a few words). "
+            "part_of_speech_es: e.g. verbo, sustantivo, adjetivo, adverbio, preposición, expresión. "
+            "base_form: the dictionary form in English (e.g. 'went' -> 'go'). "
+            "example_en/example_es: one new, short, simple example sentence and its translation. "
+            "note_es: one short tip (irregular verb, phrasal verb, false friend, pronunciation) or empty string."
+        )
+        schema = WORD_SCHEMA
+    elif kind == "sentence":
+        if not sentence:
+            raise ValueError("Falta la frase.")
+        prompt = (
+            f'Sentence: "{sentence}"\n\n'
+            "translation_es: a natural Spanish translation. "
+            "note_es: one short note about a useful expression or grammar point in it, or empty string."
+        )
+        schema = SENTENCE_SCHEMA
+    else:
+        raise ValueError("Tipo de explicación inválido.")
+
+    response = get_client().beta.messages.create(
+        model=MODEL,
+        max_tokens=2000,
+        betas=["server-side-fallback-2026-07-01"],
+        fallbacks="default",
+        output_config={"effort": "low", "format": {"type": "json_schema", "schema": schema}},
+        system=EXPLAIN_SYSTEM,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    if response.stop_reason in ("refusal", "max_tokens"):
+        raise RuntimeError("No se pudo obtener la explicación.")
+    text = next(b.text for b in response.content if b.type == "text")
+    return json.loads(text)
+
+
+ROUTES = {"/api/tutor": ask_tutor, "/api/explain": explain}
+
+
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(PUBLIC), **kwargs)
@@ -183,14 +254,15 @@ class Handler(SimpleHTTPRequestHandler):
         return super().do_GET()
 
     def do_POST(self):
-        if self.path != "/api/tutor":
+        route = ROUTES.get(self.path)
+        if not route:
             return self.send_json(HTTPStatus.NOT_FOUND, {"error": "No encontrado"})
         length = int(self.headers.get("Content-Length") or 0)
         if length <= 0 or length > MAX_BODY:
             return self.send_json(HTTPStatus.BAD_REQUEST, {"error": "Solicitud inválida"})
         try:
             payload = json.loads(self.rfile.read(length))
-            return self.send_json(HTTPStatus.OK, ask_tutor(payload))
+            return self.send_json(HTTPStatus.OK, route(payload))
         except (ValueError, json.JSONDecodeError) as e:
             return self.send_json(HTTPStatus.BAD_REQUEST, {"error": str(e)})
         except anthropic.AuthenticationError:
@@ -200,7 +272,7 @@ class Handler(SimpleHTTPRequestHandler):
             # El SDK lanza TypeError cuando no encuentra ninguna credencial.
             if "authentication" not in str(e):
                 sys.stderr.write(f"tutor error: {e!r}\n")
-                return self.send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": "Error interno del tutor."})
+                return self.send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": "Error interno del servidor."})
             return self.send_json(HTTPStatus.UNAUTHORIZED, {
                 "error": "Falta la API key. Configura ANTHROPIC_API_KEY y reinicia el servidor."})
         except anthropic.RateLimitError:
@@ -212,7 +284,7 @@ class Handler(SimpleHTTPRequestHandler):
             return self.send_json(HTTPStatus.BAD_GATEWAY, {"error": "Sin conexión con el servicio de IA."})
         except Exception as e:  # noqa: BLE001
             sys.stderr.write(f"tutor error: {e!r}\n")
-            return self.send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": "Error interno del tutor."})
+            return self.send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": "Error interno del servidor."})
 
 
 def main():

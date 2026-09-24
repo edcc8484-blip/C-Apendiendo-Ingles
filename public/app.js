@@ -1,193 +1,21 @@
-import { LESSONS, VOCAB, DICTATION, LISTENING } from "./data.js";
-
-// ---------- Estado persistente ----------
-const STORE_KEY = "ingles-rapido.v1";
-const DEFAULTS = {
-  level: "A1", rate: 0.95, dailyGoal: 50, autoSpeak: true,
-  xpByDay: {}, lessonsDone: {}, cards: {}, newByDay: {}, talkByDay: {}, dictByDay: {},
-};
-function load() {
-  try { return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(STORE_KEY) || "{}") }; }
-  catch { return { ...DEFAULTS }; }
-}
-const S = load();
-function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch { /* sin almacenamiento */ } }
-
-const today = () => new Date().toLocaleDateString("en-CA");
-const dayOffset = (d, n) => { const x = new Date(d + "T12:00:00"); x.setDate(x.getDate() + n); return x.toLocaleDateString("en-CA"); };
-const xpToday = () => S.xpByDay[today()] || 0;
-const totalXP = () => Object.values(S.xpByDay).reduce((a, b) => a + b, 0);
-function streak() {
-  let d = today(), n = 0;
-  if (!S.xpByDay[d]) d = dayOffset(d, -1);
-  while (S.xpByDay[d]) { n++; d = dayOffset(d, -1); }
-  return n;
-}
-function addXP(n, msg) {
-  const before = xpToday();
-  S.xpByDay[today()] = before + n;
-  save(); renderStats();
-  if (before < S.dailyGoal && before + n >= S.dailyGoal) toast("¡Meta diaria cumplida! Sigue así.");
-  else if (msg) toast(msg);
-}
-const bump = (key, n = 1) => { S[key][today()] = (S[key][today()] || 0) + n; save(); };
-
-// ---------- Utilidades ----------
-const $ = (sel, root = document) => root.querySelector(sel);
-const app = $("#app");
-const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const shuffle = (a) => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
-const LEVEL_ORDER = ["A1", "A2", "B1", "B2"];
-const levelIdx = (l) => LEVEL_ORDER.indexOf(l);
-
-const ICON = {
-  speaker: '<svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/></svg>',
-  slow: '<svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M17 12h4"/></svg>',
-  mic: '<svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>',
-  send: '<svg viewBox="0 0 24 24"><path d="M4 12l16-8-6 16-2-7z"/></svg>',
-  stop: '<svg viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="1"/></svg>',
-};
-
-let toastTimer;
-function toast(text) {
-  const t = $("#toast");
-  t.textContent = text; t.classList.add("show");
-  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), Math.max(2400, text.length * 60));
-}
-
-// ---------- Voz: texto a voz ----------
-const AUDIO_HELP = "No se pudo reproducir la voz. Abre la app en Chrome o Edge y revisa el volumen.";
-let voices = [];
-function loadVoices() { voices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith("en")); }
-if ("speechSynthesis" in window) { loadVoices(); speechSynthesis.onvoiceschanged = loadVoices; }
-function pickVoice(alt = false) {
-  const pref = alt
-    ? [/Guy|Christopher|Eric|Daniel|Google UK English Male/i, /en-GB/i]
-    : [/Aria|Jenny|Samantha|Google US English|Zira/i, /en-US/i];
-  for (const p of pref) { const v = voices.find((x) => p.test(x.name) || p.test(x.lang)); if (v) return v; }
-  return voices[0];
-}
-function speak(text, { rate = S.rate, alt = false } = {}) {
-  return new Promise((resolve) => {
-    if (!("speechSynthesis" in window)) { toast("Tu navegador no soporta audio de voz."); return resolve(); }
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = "en-US"; u.rate = rate;
-    const v = pickVoice(alt); if (v) u.voice = v;
-    if (alt && !v) u.pitch = 0.8;
-    u.onend = () => resolve();
-    u.onerror = (e) => {
-      if (e.error !== "interrupted" && e.error !== "canceled") toast(AUDIO_HELP);
-      resolve();
-    };
-    if (!voices.length && !speechSynthesis.getVoices().length) toast(AUDIO_HELP);
-    speechSynthesis.speak(u);
-  });
-}
-const stopSpeaking = () => { if ("speechSynthesis" in window) speechSynthesis.cancel(); };
-
-// ---------- Voz: reconocimiento ----------
-const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-const canListen = !!Recognition;
-let activeRec = null;
-function listen(onInterim) {
-  return new Promise((resolve, reject) => {
-    if (!canListen) return reject(new Error("unsupported"));
-    stopSpeaking();
-    const rec = new Recognition();
-    rec.lang = "en-US"; rec.interimResults = true; rec.continuous = false; rec.maxAlternatives = 1;
-    let finalText = "", errCode = "";
-    rec.onresult = (e) => {
-      let interim = "";
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) finalText += e.results[i][0].transcript;
-        else interim += e.results[i][0].transcript;
-      }
-      onInterim?.((finalText + " " + interim).trim());
-    };
-    rec.onerror = (e) => { errCode = e.error; };
-    rec.onend = () => {
-      activeRec = null;
-      if (!finalText.trim() && MIC_ERRORS[errCode]) reject(new Error(MIC_ERRORS[errCode]));
-      else resolve(finalText.trim());
-    };
-    activeRec = rec;
-    try { rec.start(); } catch { activeRec = null; reject(new Error(MIC_ERRORS["not-allowed"])); }
-  });
-}
-const stopListening = () => activeRec?.stop();
-const MIC_ERRORS = {
-  "not-allowed": "El micrófono está bloqueado. Abre la app en Chrome o Edge y, cuando lo pida, elige «Permitir» (o en el candado de la barra de direcciones).",
-  "service-not-allowed": "Este navegador no permite el reconocimiento de voz. Usa Google Chrome o Microsoft Edge.",
-  "audio-capture": "No se encontró ningún micrófono. Conecta uno o revisa la configuración de sonido de Windows.",
-  "network": "El reconocimiento de voz necesita internet. Revisa tu conexión.",
-};
-const NOT_HEARD = "No te escuché. Habla justo después de tocar el botón, cerca del micrófono.";
-
-// Compara lo dicho/escrito con la frase objetivo, palabra por palabra.
-const CONTRACTIONS = {
-  "i'm": "i am", "you're": "you are", "he's": "he is", "she's": "she is", "it's": "it is", "we're": "we are",
-  "they're": "they are", "i've": "i have", "i'll": "i will", "i'd": "i would", "don't": "do not",
-  "doesn't": "does not", "didn't": "did not", "isn't": "is not", "aren't": "are not", "can't": "cannot",
-  "won't": "will not", "haven't": "have not", "that's": "that is", "what's": "what is", "let's": "let us",
-  "where's": "where is", "there's": "there is", "you'll": "you will", "we'll": "we will", "i ve": "i have",
-};
-const NUMBERS = { zero: "0", one: "1", two: "2", three: "3", four: "4", five: "5", six: "6", seven: "7", eight: "8", nine: "9", ten: "10" };
-function words(s) {
-  const base = s.toLowerCase().replace(/[’`]/g, "'").replace(/[^a-z0-9'\s-]/g, " ").replace(/-/g, " ");
-  return base.split(/\s+/).filter(Boolean)
-    .flatMap((w) => (CONTRACTIONS[w] || w).split(" "))
-    .map((w) => NUMBERS[w] || w.replace(/'/g, ""));
-}
-function compare(target, said) {
-  const t = words(target), s = words(said);
-  const dp = Array.from({ length: t.length + 1 }, () => new Array(s.length + 1).fill(0));
-  for (let i = t.length - 1; i >= 0; i--) for (let j = s.length - 1; j >= 0; j--)
-    dp[i][j] = t[i] === s[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
-  const hit = new Set();
-  for (let i = 0, j = 0; i < t.length && j < s.length;) {
-    if (t[i] === s[j]) { hit.add(i); i++; j++; } else if (dp[i + 1][j] >= dp[i][j + 1]) i++; else j++;
-  }
-  // Muestra la frase original marcando las palabras que faltaron.
-  const tokens = target.split(/\s+/);
-  let k = 0;
-  const html = tokens.map((tok) => {
-    const n = words(tok).length || 1;
-    const ok = Array.from({ length: n }, (_, x) => hit.has(k + x)).every(Boolean);
-    k += n;
-    return `<span class="${ok ? "ok" : "miss"}">${esc(tok)}</span>`;
-  }).join(" ");
-  return { score: t.length ? hit.size / t.length : 0, html, extra: s.length - hit.size };
-}
-
-// ---------- Repaso espaciado (SM-2 simplificado) ----------
-const DAY = 86400000;
-function cardFor(en) { return S.cards[en]; }
-function dueCards() { const now = Date.now(); return VOCAB.filter(([en]) => S.cards[en] && S.cards[en].due <= now); }
-function newAvailable() { return Math.max(0, 10 - (S.newByDay[today()] || 0)); }
-function grade(en, g) {
-  const c = S.cards[en] || { ease: 2.5, ivl: 0, reps: 0, due: 0 };
-  if (!S.cards[en]) bump("newByDay");
-  if (g === 0) { c.reps = 0; c.ivl = 0; c.ease = Math.max(1.3, c.ease - 0.2); c.due = Date.now() + 60_000; }
-  else {
-    if (g === 1) { c.ivl = Math.max(1, c.ivl * 1.2); c.ease = Math.max(1.3, c.ease - 0.15); }
-    else if (c.reps === 0) c.ivl = g === 3 ? 3 : 1;
-    else if (c.reps === 1) c.ivl = g === 3 ? 6 : 3;
-    else c.ivl = c.ivl * c.ease * (g === 3 ? 1.3 : 1);
-    if (g === 3) c.ease += 0.15;
-    c.reps++; c.due = Date.now() + Math.round(c.ivl) * DAY - 3600_000;
-  }
-  S.cards[en] = c; save();
-}
-const learnedCount = () => Object.values(S.cards).filter((c) => c.reps > 0).length;
+import { LESSONS, DICTATION, LISTENING } from "./data.js";
+import {
+  S, save, today, xpToday, totalXP, streak, addXP, bump, $, app, esc, shuffle, LEVEL_ORDER, levelIdx, ICON, toast,
+  speak, stopSpeaking, canListen, listen, stopListening, NOT_HEARD, words, compare, cardFor, dueCards, newAvailable, grade,
+  learnedCount, renderStats, checkTutor, tutorStatus, isListening, allVocab,
+} from "./core.js";
+import { renderBooks, renderBook, stopBook } from "./library.js";
+import { renderVerbs, renderVerb, renderVerbQuiz } from "./verbs-view.js";
+import { BOOKS } from "./books.js";
 
 // ---------- Navegación ----------
 let view = "home";
 let ctx = {}; // estado de la vista actual
 function go(v, c = {}) {
-  stopSpeaking(); stopListening();
+  stopBook(); stopSpeaking(); stopListening();
   view = v; ctx = c;
   document.querySelectorAll("#tabs button").forEach((b) => {
-    const tab = { lesson: "lessons" }[v] || v;
+    const tab = { lesson: "lessons", book: "books", verb: "verbs", verbquiz: "verbs" }[v] || v;
     b.classList.toggle("active", b.dataset.view === tab);
   });
   render();
@@ -195,18 +23,29 @@ function go(v, c = {}) {
 }
 $("#tabs").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) go(b.dataset.view); });
 
-function renderStats() {
-  $("#stats").innerHTML =
-    `<span class="pill" title="Días seguidos">🔥 ${streak()}</span>` +
-    `<span class="pill" title="XP de hoy / meta">${xpToday()}/${S.dailyGoal} XP</span>`;
-}
 
 function render() {
-  const views = { home: renderHome, lessons: renderLessons, lesson: renderLesson, vocab: renderVocab, listen: renderListen, talk: renderTalk };
+  const views = {
+    home: renderHome, lessons: renderLessons, lesson: renderLesson, vocab: renderVocab, listen: renderListen, talk: renderTalk,
+    books: () => renderBooks(ctx, go), book: () => renderBook(ctx, go),
+    verbs: () => renderVerbs(ctx, go), verb: () => renderVerb(ctx, go), verbquiz: () => renderVerbQuiz(ctx, go),
+  };
   views[view]();
 }
 
 // ---------- Inicio ----------
+// Siguiente capítulo de audiolibro sin completar, empezando por el nivel del usuario.
+function nextChapter() {
+  const books = [...BOOKS].sort((a, b) => Math.abs(levelIdx(a.level) - levelIdx(S.level)) - Math.abs(levelIdx(b.level) - levelIdx(S.level)));
+  for (const b of books) for (let i = 0; i < b.chapters.length; i++) {
+    const p = S.books[b.id]?.[i];
+    if (!(p?.listened && p.readBest >= 0.8)) {
+      return { done: false, title: `Audiolibro: ${b.title}`, sub: `Capítulo ${i + 1} · ${p?.listened ? "léelo en voz alta" : "escúchalo y luego léelo"}`,
+        go: "book", arg: { bookId: b.id, ch: i, mode: p?.listened ? "read" : "listen" } };
+    }
+  }
+  return { done: true, title: "Audiolibros terminados", sub: "¡Leíste todos los libros!", go: "books" };
+}
 function nextLesson() {
   return LESSONS.find((l) => !S.lessonsDone[l.id] && levelIdx(l.level) <= levelIdx(S.level))
     || LESSONS.find((l) => !S.lessonsDone[l.id]);
@@ -215,13 +54,14 @@ function renderHome() {
   const pct = Math.min(100, Math.round((xpToday() / S.dailyGoal) * 100));
   const nl = nextLesson();
   const due = dueCards().length;
-  const toReview = due + Math.min(newAvailable(), VOCAB.filter(([en]) => !S.cards[en]).length);
+  const toReview = due + Math.min(newAvailable(), allVocab().filter(([en]) => !S.cards[en]).length);
   const talked = (S.talkByDay[today()] || 0) >= 5;
   const dictated = (S.dictByDay[today()] || 0) >= 5;
   const tasks = [
     { done: toReview === 0, title: "Repasa tus palabras", sub: toReview ? `${toReview} tarjetas para hoy` : "Todo al día", go: "vocab" },
     { done: !nl, title: nl ? `Lección: ${nl.title}` : "Todas las lecciones completadas", sub: nl ? `Nivel ${nl.level} · 5-10 min` : "¡Excelente!", go: nl ? "lesson" : "lessons", arg: nl && { id: nl.id } },
     { done: dictated, title: "Entrena el oído", sub: `Dictado: ${Math.min(5, S.dictByDay[today()] || 0)}/5 frases`, go: "listen" },
+    nextChapter(),
     { done: talked, title: "Conversa con Emma", sub: `${Math.min(5, S.talkByDay[today()] || 0)}/5 mensajes hablados`, go: "talk" },
   ];
   app.innerHTML = `
@@ -244,7 +84,7 @@ function renderHome() {
     </section>
     <div class="grid">
       <section class="card"><div class="muted small">Racha</div><div class="big-num">${streak()} ${streak() === 1 ? "día" : "días"}</div></section>
-      <section class="card"><div class="muted small">Palabras aprendidas</div><div class="big-num">${learnedCount()} <span class="small muted">/ ${VOCAB.length}</span></div></section>
+      <section class="card"><div class="muted small">Palabras aprendidas</div><div class="big-num">${learnedCount()} <span class="small muted">/ ${allVocab().length}</span></div></section>
       <section class="card"><div class="muted small">Lecciones</div><div class="big-num">${Object.keys(S.lessonsDone).length} <span class="small muted">/ ${LESSONS.length}</span></div></section>
       <section class="card"><div class="muted small">XP total</div><div class="big-num">${totalXP()}</div></section>
     </div>
@@ -408,7 +248,7 @@ function renderLesson() {
     let tries = 0;
     $("#rec").onclick = async () => {
       const btn = $("#rec");
-      if (activeRec) return stopListening();
+      if (isListening()) return stopListening();
       btn.innerHTML = `${ICON.stop} Detener`;
       let said = "", micError = "";
       try { said = await listen((t) => $("#heard").textContent = `Escuché: «${t}»`); }
@@ -430,7 +270,7 @@ function renderLesson() {
 // ---------- Vocabulario ----------
 function renderVocab() {
   if (!ctx.queue) {
-    const fresh = VOCAB.filter(([en]) => !S.cards[en]).slice(0, newAvailable());
+    const fresh = allVocab().filter(([en]) => !S.cards[en]).slice(0, newAvailable());
     ctx.queue = [...shuffle(dueCards()), ...fresh];
     ctx.done = 0;
   }
@@ -447,7 +287,7 @@ function renderVocab() {
       </div></section>
       ${renderWordList()}`;
     $("#home").onclick = () => go("home");
-    const rest = VOCAB.filter(([en]) => !S.cards[en]);
+    const rest = allVocab().filter(([en]) => !S.cards[en]);
     $("#more").disabled = !rest.length;
     $("#more").onclick = () => { ctx.queue = rest.slice(0, 5); render(); };
     return;
@@ -490,7 +330,7 @@ function renderVocab() {
   }
 }
 function renderWordList() {
-  const learned = VOCAB.filter(([en]) => S.cards[en]?.reps > 0);
+  const learned = allVocab().filter(([en]) => S.cards[en]?.reps > 0);
   if (!learned.length) return "";
   return `<section class="card"><h2>Tus palabras</h2><div class="words">
     ${learned.map(([en, es]) => `<span title="${esc(es)}">${esc(en)}</span>`).join("")}</div></section>`;
@@ -590,11 +430,6 @@ const SCENARIOS = {
   shopping: ["De compras", "Hi! Are you looking for anything in particular today?", "¡Hola! ¿Busca algo en particular hoy?"],
   directions: ["Pidiendo direcciones", "Hi, you look a little lost. Can I help you find something?", "Hola, parece un poco perdido. ¿Le ayudo a encontrar algo?"],
 };
-let tutorStatus = null;
-async function checkTutor() {
-  try { tutorStatus = await (await fetch("/api/status")).json(); }
-  catch { tutorStatus = { tutor: false, offline: true }; }
-}
 const talk = { scenario: "free", history: [], busy: false };
 function startScenario(key) {
   const [, en, es] = SCENARIOS[key];
@@ -632,7 +467,7 @@ async function renderTalk() {
   $("#send").onclick = () => sendTalk(msg.value, false);
   if (canListen) $("#mic").onclick = async () => {
     const mic = $("#mic");
-    if (activeRec) return stopListening();
+    if (isListening()) return stopListening();
     if (talk.busy) return;
     mic.classList.add("rec");
     let said = "", micError = "";
