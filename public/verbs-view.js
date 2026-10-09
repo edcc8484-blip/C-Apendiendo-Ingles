@@ -1,5 +1,6 @@
 import { VERBS, VERB_BY_BASE, TENSES, conjugate } from "./verbs.js";
 import { S, save, addXP, $, app, esc, ICON, speak } from "./core.js";
+import { TOP_VERBS } from "./course.js";
 
 const norm = (s) => s.toLowerCase().normalize("NFD").replace(/\p{M}/gu, "");
 
@@ -91,14 +92,18 @@ export function renderVerb(ctx, go) {
 
 // ---------- Práctica de irregulares ----------
 export function renderVerbQuiz(ctx, go) {
-  const pool = VERBS.filter((v) => v.irregular && v.base !== "be");
+  // set "top": reto «Domina los verbos» del Curso (los más usados, primero los que aún no dominas).
+  const top = ctx.set === "top";
+  const pending = TOP_VERBS.filter((b) => !S.verbMastered[b]);
+  const pool = top ? (pending.length ? pending : TOP_VERBS).map((b) => VERB_BY_BASE[b]) : VERBS.filter((v) => v.irregular && v.base !== "be");
   ctx.v ??= pool[Math.floor(Math.random() * pool.length)];
   const v = ctx.v;
   const q = S.verbQuiz;
   app.innerHTML = `
-    <button class="back" id="back">← Verbos</button>
+    <button class="back" id="back">← ${top ? "Curso" : "Verbos"}</button>
     <section class="card">
-      <div class="row between"><h2>Practica los irregulares</h2><span class="pill">${q.right}/${q.total} correctas</span></div>
+      <div class="row between"><h2>${top ? "Domina los verbos" : "Practica los irregulares"}</h2>
+        <span class="pill">${top ? `${TOP_VERBS.length - pending.length}/${TOP_VERBS.length} dominados` : `${q.right}/${q.total} correctas`}</span></div>
       <p class="muted">Escribe el pasado y el participio.</p>
       <div class="row" style="align-items:baseline"><span class="sheet-word">${esc(v.base)}</span>
         <button class="icon-btn" id="say" aria-label="Escuchar">${ICON.speaker}</button>
@@ -110,7 +115,7 @@ export function renderVerbQuiz(ctx, go) {
       <div class="row" style="margin-top:12px"><button class="btn primary" id="check">Comprobar</button><button class="btn" id="skip">No sé</button></div>
       <div id="fb"></div>
     </section>`;
-  $("#back").onclick = () => go("verbs");
+  $("#back").onclick = () => go(top ? "course" : "verbs");
   $("#say").onclick = () => speak(v.base);
   $("#past").focus();
   const next = () => { ctx.v = null; renderVerbQuiz(ctx, go); };
@@ -128,7 +133,7 @@ export function renderVerbQuiz(ctx, go) {
     const a = $("#past").value, b = $("#pp").value;
     if (!a.trim() || !b.trim()) return;
     const ok = accept(a, v.past) && accept(b, v.pp);
-    q.total++; if (ok) { q.right++; addXP(2); }
+    q.total++; if (ok) { q.right++; addXP(2); if (top && !S.verbMastered[v.base]) S.verbMastered[v.base] = true; }
     save();
     show(ok, ok ? "¡Correcto!" : "Casi. La forma correcta es:");
   };

@@ -8,6 +8,9 @@ import { renderBooks, renderBook, stopBook } from "./library.js";
 import { renderVerbs, renderVerb, renderVerbQuiz } from "./verbs-view.js";
 import { BOOKS } from "./books.js";
 import { IT_LESSONS, IT_STAGES } from "./it-track.js";
+import {
+  renderCourse, renderCourseWelcome, renderCourseStage, renderCourseMission, renderCourseDone, stopMission, currentDay,
+} from "./course.js";
 
 const ALL_LESSONS = [...LESSONS, ...IT_LESSONS];
 // La ruta de Redes se desbloquea en orden: cada lección exige completar la anterior.
@@ -17,10 +20,13 @@ const itUnlocked = (l) => { const i = IT_LESSONS.indexOf(l); return i <= 0 || !!
 let view = "home";
 let ctx = {}; // estado de la vista actual
 function go(v, c = {}) {
-  stopBook(); stopSpeaking(); stopListening();
+  stopBook(); stopMission(); stopSpeaking(); stopListening();
   view = v; ctx = c;
   document.querySelectorAll("#tabs button").forEach((b) => {
-    const tab = { lesson: "lessons", book: "books", verb: "verbs", verbquiz: "verbs" }[v] || v;
+    const tab = {
+      lesson: c.lessonObj ? "course" : "lessons", book: "books", verb: "verbs", verbquiz: c.set === "top" ? "course" : "verbs",
+      courseWelcome: "course", courseStage: "course", courseMission: "course", courseDone: "course",
+    }[v] || v;
     b.classList.toggle("active", b.dataset.view === tab);
   });
   render();
@@ -34,6 +40,8 @@ function render() {
     home: renderHome, lessons: renderLessons, lesson: renderLesson, vocab: renderVocab, listen: renderListen, talk: renderTalk,
     books: () => renderBooks(ctx, go), book: () => renderBook(ctx, go),
     verbs: () => renderVerbs(ctx, go), verb: () => renderVerb(ctx, go), verbquiz: () => renderVerbQuiz(ctx, go),
+    course: () => renderCourse(ctx, go), courseWelcome: () => renderCourseWelcome(ctx, go), courseStage: () => renderCourseStage(ctx, go),
+    courseMission: () => renderCourseMission(ctx, go), courseDone: () => renderCourseDone(ctx, go),
   };
   views[view]();
 }
@@ -63,7 +71,10 @@ function renderHome() {
   const toReview = due + Math.min(newAvailable(), allVocab().filter(([en]) => !S.cards[en]).length);
   const talked = (S.talkByDay[today()] || 0) >= 5;
   const dictated = (S.dictByDay[today()] || 0) >= 5;
+  const day = currentDay();
   const tasks = [
+    day ? { done: false, title: `Reto 30 días · Día ${day.n}: ${day.title}`, sub: `Nivel ${day.level} · aprende, practica y habla ${day.mission.seconds} segundos`, go: "course" }
+      : { done: true, title: "Reto 30 días completado", sub: "¡Felicidades!", go: "course" },
     { done: toReview === 0, title: "Repasa tus palabras", sub: toReview ? `${toReview} tarjetas para hoy` : "Todo al día", go: "vocab" },
     { done: !nl, title: nl ? `Lección: ${nl.title}` : "Todas las lecciones completadas", sub: nl ? `Nivel ${nl.level} · 5-10 min` : "¡Excelente!", go: nl ? "lesson" : "lessons", arg: nl && { id: nl.id } },
     { done: dictated, title: "Entrena el oído", sub: `Dictado: ${Math.min(5, S.dictByDay[today()] || 0)}/5 frases`, go: "listen" },
@@ -150,12 +161,15 @@ function renderLessons() {
 }
 
 function renderLesson() {
-  const lesson = ALL_LESSONS.find((l) => l.id === ctx.id);
-  S.lessonTrack = lesson.track || "general";
+  // ctx.lessonObj: lección incrustada (p. ej. un día del Curso) con su propio regreso (backTo) y continuación (onDone).
+  const lesson = ctx.lessonObj || ALL_LESSONS.find((l) => l.id === ctx.id);
+  if (!ctx.lessonObj) S.lessonTrack = lesson.track || "general";
+  const embed = { lessonObj: ctx.lessonObj, backTo: ctx.backTo, backLabel: ctx.backLabel, onDone: ctx.onDone };
+  const goBack = () => (ctx.backTo ? go(...ctx.backTo) : go("lessons"));
   ctx.phase ??= "learn";
   if (ctx.phase === "learn") {
     app.innerHTML = `
-      <button class="back" id="back">← Lecciones</button>
+      <button class="back" id="back">← ${esc(ctx.backLabel || "Lecciones")}</button>
       <section class="card">
         <span class="badge">${lesson.level}</span>
         <h1 style="margin-top:8px">${esc(lesson.title)}</h1>
@@ -180,7 +194,7 @@ function renderLesson() {
           </div>`).join("")}
       </section>
       <button class="btn primary block" id="start">Practicar (${lesson.exercises.length} ejercicios)</button>`;
-    $("#back").onclick = () => go("lessons");
+    $("#back").onclick = goBack;
     app.querySelectorAll("[data-say]").forEach((b) => b.onclick = () => speak(lesson.phrases[+b.dataset.say].en));
     app.querySelectorAll("[data-term]").forEach((b) => b.onclick = () => speak(lesson.terms[+b.dataset.term].en));
     app.querySelectorAll("[data-slow]").forEach((b) => b.onclick = () => speak(lesson.phrases[+b.dataset.slow].en, { rate: 0.65 }));
@@ -213,6 +227,7 @@ function renderLesson() {
     fb.innerHTML += `<button class="btn primary block" id="cont" style="margin-top:12px">Continuar</button>`;
     $("#cont").onclick = () => {
       ctx.i++;
+      if (ctx.i >= lesson.exercises.length && ctx.onDone) return ctx.onDone(ctx.correct, lesson.exercises.length);
       if (ctx.i >= lesson.exercises.length) {
         if (!S.lessonsDone[lesson.id]) addXP(20, "+20 XP por completar la lección");
         S.lessonsDone[lesson.id] = true; save();
@@ -298,7 +313,7 @@ function renderLesson() {
       if (ok || tries >= 3) { btn.disabled = true; next(ok); }
     };
   }
-  $("#back").onclick = () => go("lesson", { id: lesson.id });
+  $("#back").onclick = () => go("lesson", { id: lesson.id, ...embed });
 }
 
 // ---------- Vocabulario ----------
@@ -484,6 +499,8 @@ function startScenario(key) {
 }
 async function renderTalk() {
   if (!tutorStatus) { app.innerHTML = `<p class="muted">Conectando con el tutor...</p>`; await checkTutor(); if (view !== "talk") return; }
+  // Desde el Curso se puede abrir la conversación con el tema del día.
+  if (ctx.scenario && ctx.scenario !== talk.scenario) { startScenario(ctx.scenario); ctx.scenario = null; }
   if (!talk.history.length) startScenario(talk.scenario);
   const off = !tutorStatus.tutor;
   app.innerHTML = `

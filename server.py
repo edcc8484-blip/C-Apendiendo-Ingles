@@ -219,6 +219,16 @@ WORD_SCHEMA = {
     "required": ["meaning_es", "part_of_speech_es", "base_form", "example_en", "example_es", "note_es"],
     "additionalProperties": False,
 }
+SPEECH_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "strengths_es": {"type": "string"},
+        "feedback_es": {"type": "string"},
+        "improved_en": {"type": "string"},
+    },
+    "required": ["strengths_es", "feedback_es", "improved_en"],
+    "additionalProperties": False,
+}
 SENTENCE_SCHEMA = {
     "type": "object",
     "properties": {"translation_es": {"type": "string"}, "note_es": {"type": "string"}},
@@ -252,6 +262,22 @@ def explain(payload):
             "note_es: one short note about a useful expression or grammar point in it, or empty string."
         )
         schema = SENTENCE_SCHEMA
+    elif kind == "speech":
+        # Monólogo de la misión de habla del Curso (transcrito por reconocimiento de voz).
+        if not sentence:
+            raise ValueError("No hay nada que revisar.")
+        sentence = str(payload.get("sentence", "")).strip()[:3000]
+        task = str(payload.get("prompt", "")).strip()[:300]
+        level = payload.get("level") if payload.get("level") in LEVELS else "A1"
+        prompt = (
+            f"Speaking task: \"{task}\"\nLearner level: {LEVELS[level]}\n"
+            f"What the learner said (speech-recognition transcript, ignore punctuation and casing):\n\"{sentence}\"\n\n"
+            "strengths_es: 1-2 sentences in Spanish on what they did well (be specific and encouraging). "
+            "feedback_es: the 2-3 most important mistakes or improvements, in Spanish, each with the correct English form. "
+            "improved_en: a natural, corrected version of what they tried to say, at a level slightly above theirs, "
+            "keeping their ideas (max 6 sentences)."
+        )
+        schema = SPEECH_SCHEMA
     else:
         raise ValueError("Tipo de explicación inválido.")
 

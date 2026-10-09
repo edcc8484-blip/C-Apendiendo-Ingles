@@ -6,7 +6,7 @@ const STORE_KEY = "ingles-rapido.v1";
 const DEFAULTS = {
   level: "A1", rate: 0.95, dailyGoal: 50, autoSpeak: true,
   xpByDay: {}, lessonsDone: {}, cards: {}, newByDay: {}, talkByDay: {}, dictByDay: {},
-  customVocab: [], books: {}, verbQuiz: { right: 0, total: 0 }, lessonTrack: "general",
+  customVocab: [], books: {}, verbQuiz: { right: 0, total: 0 }, lessonTrack: "general", verbMastered: {},
 };
 function load() {
   try { return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(STORE_KEY) || "{}") }; }
@@ -214,5 +214,5 @@ export const isListening = () => !!activeRec;
 export const allVocab = () => [...VOCAB, ...S.customVocab];
 
 export {
-  S, save, today, xpToday, totalXP, streak, addXP, bump, $, app, esc, shuffle, LEVEL_ORDER, levelIdx, ICON, toast, speak, stopSpeaking, canListen, listen, stopListening, NOT_HEARD, words, compare, DAY, cardFor, dueCards, newAvailable, grade, learnedCount, renderStats, checkTutor,
+  S, save, today, xpToday, totalXP, streak, addXP, bump, $, app, esc, shuffle, LEVEL_ORDER, levelIdx, ICON, toast, speak, stopSpeaking, canListen, listen, stopListening, NOT_HEARD, MIC_ERRORS, words, compare, DAY, cardFor, dueCards, newAvailable, grade, learnedCount, renderStats, checkTutor,
 };
